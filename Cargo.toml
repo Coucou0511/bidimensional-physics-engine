@@ -2,5 +2,7 @@
 name = "bidimensional-physics-engine"
 version = "0.1.0"
 edition = "2024"
+description = "A simple 2d physics engine."
+license = "MIT"
 
 [dependencies]
