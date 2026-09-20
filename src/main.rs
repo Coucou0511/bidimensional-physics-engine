@@ -1,4 +1,4 @@
-use crate::Object_type::Circle;
+use crate::ObjectType::Circle;
 
 // each object will be a struct with the object's x&y position, x&y velocity, angular velocity, mass, applied force, angle at which the force is applied, and hitbox
 #[derive(Clone, Debug)]
@@ -7,32 +7,49 @@ struct Object {
     y_pos: f64,
     x_vel: f64, // in m/s
     y_vel: f64,
-    ang_pos: f64, // in rad
-    ang_vel: f64, // in rad/s
     mass: f64, //in kilograms
-    force: f64, //in N
-    f_ang: f64, // in rad
-    obj_type: Object_type,
+    force_x: f64,
+    force_y: f64,
+    obj_type: ObjectType,
 }
 impl Object {
-    fn apply_grav_pull_from(&mut self, target: Object) {
-        let rela_pos = (self.x_pos - target.x_pos, self.y_pos - target.y_pos); // relative x and y position of the target to the object we are computing for
-
-        let G: f64 = 0.00000000006674; // gravitationnal constant in N*m²/kg²
-        let r = ((rela_pos.0).powf(2.0) + (rela_pos.1).powf(2.0)).sqrt(); // distance between the centers of the two objects
-        let F = G*((self.mass*target.mass)/r.powf(2.0)); // gravitationnal pull in N
-        let angle = (rela_pos.1).atan2(rela_pos.0); // angle at which the gravitationnal pull is applied to relative to the x axis
-        
-        let new_force_vector = (F*(angle).cos() + self.force*(self.f_ang).cos(), F*(angle).sin() + self.force*(self.f_ang).sin()); // x and y values of the new force vector
-        
-        self.force = (new_force_vector.0.powf(2.0) + new_force_vector.1.powf(2.0)).sqrt(); // update the force values of the object
-        self.f_ang = (new_force_vector.1).atan2(new_force_vector.0);
+    fn clear(&mut self) {
+        self.force_x = 0.0;
+        self.force_y = 0.0;
+    }
+    fn compute_vel(&mut self) {
+        self.x_vel = self.force_x / self.mass;
+        self.y_vel = self.force_y / self.mass;
+    }
+    fn apply_pos(&mut self) {
+        self.x_pos = self.x_pos + self.x_vel;
+        self.y_pos = self.y_pos + self.y_vel;
     }
 }
 
 #[derive(Clone, Debug)]
-enum Object_type {
+enum ObjectType {
     Circle(f64), // a perfect circle of radius f64 in meters
+}
+
+fn apply_grav_pull(object1: &mut Object, object2: &mut Object) {
+    let rela_pos = (object2.x_pos - object1.x_pos, object2.y_pos - object1.y_pos);
+
+    const G: f64 = 6.674e-11; // gravitationnal constant in N*m²/kg²
+    let r_squared = (rela_pos.0).powi(2) + (rela_pos.1).powi(2); // distance between the centers of the two objects
+    let r = r_squared.sqrt();
+    if r == 0.0 {
+        return;
+    }
+    let f = G*((object1.mass*object2.mass)/r_squared); // gravitationnal pull in N
+
+    let force_x = f * rela_pos.0 / r;
+    let force_y = f * rela_pos.1 /r;
+
+    object1.force_x += force_x;
+    object1.force_y += force_y;
+    object2.force_x -= force_x;
+    object2.force_y -= force_y;
 }
 
 fn main() {
@@ -41,36 +58,34 @@ fn main() {
         y_pos : 0.0,
         x_vel : 0.0,
         y_vel : 0.0,
-        ang_pos : 0.0,
-        ang_vel : 0.0,
-        mass : 5.9722*10.0_f64.powf(24.0),
-        force : 0.0,
-        f_ang : 0.0,
-        obj_type : Circle(6.371*10.0_f64.powf(6.0)),
+        mass : 9999999999.0,
+        force_x : 0.0,
+        force_y : 0.0,
+        obj_type : Circle(6.0),
     };
 
     let mut moon = Object { // creating an object the size of the moon, placed at the average distance from earth
-        x_pos : 0.0,
-        y_pos : -3.631*10.0_f64.powf(8.0),
+        x_pos : 5.0,
+        y_pos : 0.0,
         x_vel : 0.0,
         y_vel : 0.0,
-        ang_pos : 0.0,
-        ang_vel : 0.0,
-        mass : 7.35*10.0_f64.powf(22.0),
-        force : 0.0,
-        f_ang : 0.0,
-        obj_type : Circle(1.74*10.0_f64.powf(6.0)),
+        mass : 9999999999.0,
+        force_x : 0.0,
+        force_y : 0.0,
+        obj_type : Circle(1.0),
     };
 
     // quick demo of the current capability 
-    println!("The earth is at position x=0.0m, y=0.0m, weighs 5.9722e24kg, and has no force applied to it.");
-    println!("\nThe moon is at position x=0.0m, y=-363100000.0m, weighs 7.349999999999999e22kg, and has no force applied to it.");
+    for i in 0..6 {
+        println!("{}", moon.x_pos);
+        earth.clear();
+        moon.clear();
+        apply_grav_pull(&mut earth, &mut moon);
+        earth.compute_vel();
+        moon.compute_vel();
+        earth.apply_pos();
+        moon.apply_pos();
 
-    println!("\n\nLet's apply Newton’s Law of Universal Gravitation !");
+    }
 
-    moon.apply_grav_pull_from(earth.clone());
-    earth.apply_grav_pull_from(moon.clone());
-
-    println!("\n\nEarth now has a pull of {}N at an angle of {}rad relative to the x plane.", earth.force, earth.f_ang);
-    println!("\nMoon now has a pull of {}N at an angle of {}rad relative to the x plane.", moon.force, moon.f_ang);
 }
